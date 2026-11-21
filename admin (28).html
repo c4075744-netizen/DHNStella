@@ -1,0 +1,48 @@
+<!DOCTYPE html><html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>DHN Stella — Админ-панель</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600&family=Jost:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+:root{--em:#0B4A2B;--gold:#C9A24D;--p:#F8E7DE}*{box-sizing:border-box;margin:0}
+body{font:400 15px Jost,sans-serif;background:var(--p);color:#3b3a36;min-height:100vh}
+h1,h2{font-family:'Cormorant Garamond',serif;color:var(--em)}
+.login{max-width:340px;margin:12vh auto;background:#fff;border:1px solid var(--gold);border-radius:18px;padding:28px;display:grid;gap:12px;text-align:center}
+input,select{padding:12px;border:1px solid var(--gold);border-radius:10px;font:inherit;width:100%}
+button,.b{background:var(--em);color:#fff;border:1.5px solid var(--gold);border-radius:30px;padding:10px 18px;font:500 .8rem Jost;cursor:pointer;text-decoration:none;display:inline-block}
+.b.g{background:var(--gold)}
+#app{display:none;grid-template-columns:200px 1fr;min-height:100vh}
+aside{background:var(--em);color:#fff;padding:20px 14px;display:flex;flex-direction:column;gap:8px}
+aside h2{color:var(--gold);font-size:1.5rem;margin-bottom:12px}aside a{color:#fff;padding:10px 12px;border-radius:10px;cursor:pointer}aside a.on{background:rgba(201,162,77,.3);border-left:3px solid var(--gold)}
+main{padding:22px;overflow-x:auto}.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin:14px 0}
+.c{background:#fff;border:1px solid var(--gold);border-radius:14px;padding:16px}.c b{font-size:2rem;color:var(--em);display:block}
+table{width:100%;border-collapse:collapse;background:#fff;border-radius:14px;overflow:hidden}td,th{padding:10px;border-bottom:1px solid #eee;text-align:left;font-size:.88rem}th{background:#f3e3d8;color:var(--em)}
+.s{padding:3px 10px;border-radius:20px;color:#fff;font-size:.75rem}.Новая{background:#c9a24d}.Подтверждена{background:#2a7fb8}.Выполнена{background:#0B4A2B}.Отменена{background:#a33}
+.bar{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0}.bar input,.bar select{width:auto;flex:1;min-width:120px}
+@media(max-width:700px){#app{grid-template-columns:1fr;padding-bottom:64px}aside{position:fixed;bottom:0;left:0;right:0;flex-direction:row;justify-content:space-around;padding:6px;z-index:9}aside h2{display:none}aside a{padding:8px;font-size:.8rem}}
+</style></head><body>
+<div class="login" id="lg"><h1>DHN Stella</h1><p>Вход в админ-панель</p><input id="em" type="email" placeholder="Email"><input id="pw" type="password" placeholder="Пароль"><button id="go">Войти</button><small id="er" style="color:#a33"></small><small>Первый вход: admin@dhnstella.uz / stella2026 — сразу смените пароль в «Настройках»</small></div>
+<div id="app"><aside><h2>DHN Stella</h2><a data-t="dash" class="on">Главная</a><a data-t="req">Заявки</a><a data-t="set">Настройки</a><a id="out">Выйти</a></aside><main id="mn"></main></div>
+<script>
+const K='dhn_requests',A='dhn_admin',$=s=>document.querySelector(s);
+const req=()=>{try{return JSON.parse(localStorage.getItem(K)||'[]')}catch(e){return[]}};
+const put=l=>localStorage.setItem(K,JSON.stringify(l));
+const adm=()=>{try{return JSON.parse(localStorage.getItem(A))||{e:'admin@dhnstella.uz',p:'stella2026'}}catch(e){return{e:'admin@dhnstella.uz',p:'stella2026'}}};
+let fails=0,lock=0,idle;
+const reset=()=>{clearTimeout(idle);idle=setTimeout(()=>{sessionStorage.clear();location.reload()},15*60000)};
+$('#go').onclick=()=>{if(Date.now()<lock){$('#er').textContent='Подождите 30 секунд';return}
+ const a=adm();if($('#em').value===a.e&&$('#pw').value===a.p){sessionStorage.in=1;start()}else{if(++fails>=5){lock=Date.now()+30000;fails=0}$('#er').textContent='Неверный логин или пароль'}};
+$('#out').onclick=()=>{sessionStorage.clear();location.reload()};
+function start(){$('#lg').style.display='none';$('#app').style.display='grid';show('dash');reset();document.onclick=reset}
+document.querySelectorAll('aside a[data-t]').forEach(a=>a.onclick=()=>show(a.dataset.t));
+function show(t){document.querySelectorAll('aside a').forEach(x=>x.classList.toggle('on',x.dataset.t===t));({dash,req:reqs,set})[t]()}
+function dash(){const l=req(),d=new Date().toLocaleDateString('ru'),w=Date.now()-7*864e5,cnt={};l.forEach(r=>cnt[r.service]=(cnt[r.service]||0)+1);
+ $('#mn').innerHTML=`<h1>Главная</h1><div class="cards"><div class="c"><b>${l.filter(r=>r.date.startsWith(d)).length}</b>Новых сегодня</div><div class="c"><b>${l.filter(r=>r.id>w).length}</b>За неделю</div><div class="c"><b>${l.length}</b>Всего заявок</div></div><h2>Популярные услуги</h2>${Object.entries(cnt).sort((a,b)=>b[1]-a[1]).map(([k,v])=>`<p>${k}: <b>${v}</b></p>`).join('')||'<p>Пока нет заявок</p>'}`}
+function reqs(){$('#mn').innerHTML=`<h1>Заявки</h1><div class="bar"><input id="q" placeholder="Поиск: имя, телефон"><select id="f"><option value="">Все статусы</option><option>Новая</option><option>Подтверждена</option><option>Выполнена</option><option>Отменена</option></select><select id="sv"><option value="">Все услуги</option><option>Брови</option><option>Губы</option><option>Веки</option><option>Ламинирование</option><option>Ламинирование бровей</option><option>Ламинирование ресниц</option></select><button id="ex">Экспорт CSV</button></div><div style="overflow-x:auto"><table id="tb"></table></div>`;
+ const draw=()=>{const q=$('#q').value.toLowerCase(),f=$('#f').value,v=$('#sv').value;
+ $('#tb').innerHTML='<tr><th>Дата</th><th>Имя</th><th>Телефон</th><th>Услуга</th><th>Статус</th><th>Заметка</th><th></th></tr>'+req().filter(r=>(!f||r.status===f)&&(!v||r.service===v)&&(r.name+r.phone).toLowerCase().includes(q)).map(r=>`<tr><td>${r.date}<br><small>${r.source||''}</small></td><td>${r.name}</td><td>${r.phone}</td><td>${r.service}</td><td><select data-i="${r.id}" class="st">${['Новая','Подтверждена','Выполнена','Отменена'].map(s=>`<option${s===r.status?' selected':''}>${s}</option>`).join('')}</select></td><td><input data-n="${r.id}" value="${r.note||''}" placeholder="Заметка"></td><td><a class="b g" href="tel:${r.phone}">Звонок</a> <a class="b" href="https://wa.me/${r.phone.replace(/\D/g,'')}" target="_blank">WhatsApp</a></td></tr>`).join('');
+ document.querySelectorAll('.st').forEach(s=>s.onchange=()=>{const l=req();l.find(r=>r.id==s.dataset.i).status=s.value;put(l)});
+ document.querySelectorAll('[data-n]').forEach(s=>s.onchange=()=>{const l=req();l.find(r=>r.id==s.dataset.n).note=s.value;put(l)})};
+ ['q','f','sv'].forEach(i=>$('#'+i).oninput=draw);draw();
+ $('#ex').onclick=()=>{const c='\ufeffДата;Имя;Телефон;Услуга;Статус;Заметка\n'+req().map(r=>[r.date,r.name,r.phone,r.service,r.status,r.note||''].join(';')).join('\n');const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([c],{type:'text/csv'}));a.download='zayavki.csv';a.click()}}
+function set(){const a=adm();$('#mn').innerHTML=`<h1>Настройки</h1><div class="c" style="max-width:360px;display:grid;gap:10px"><b style="font-size:1.1rem">Смена логина и пароля</b><input id="ne" value="${a.e}"><input id="np" type="password" placeholder="Новый пароль"><button id="sp">Сохранить</button></div>`;
+ $('#sp').onclick=()=>{if($('#np').value.length<6)return alert('Пароль минимум 6 символов');localStorage.setItem(A,JSON.stringify({e:$('#ne').value,p:$('#np').value}));alert('Сохранено')}}
+if(sessionStorage.in)start();
+</script></body></html>
